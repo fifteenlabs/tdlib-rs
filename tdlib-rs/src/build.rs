@@ -6,7 +6,7 @@
 
 #[allow(dead_code)]
 #[cfg(not(any(feature = "docs", feature = "pkg-config")))]
-const TDLIB_VERSION: &str = "1.8.29";
+const TDLIB_VERSION: &str = "1.8.60";
 #[cfg(feature = "download-tdlib")]
 const TDLIB_CARGO_PKG_VERSION: &str = "1.1.0";
 
@@ -61,7 +61,7 @@ fn copy_dir_all(
 ///
 /// If the OS or architecture is not supported, the function will panic.
 fn download_tdlib() {
-    let base_url = "https://github.com/FedericoBruzzone/tdlib-rs/releases/download";
+    let base_url = "https://github.com/fifteenlabs/tdlib-rs/releases/download";
     let url = format!(
         "{}/v{}/tdlib-{}-{}-{}.zip",
         base_url,

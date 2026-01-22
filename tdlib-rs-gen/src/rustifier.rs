@@ -159,23 +159,38 @@ pub mod definitions {
 pub mod types {
     use super::*;
 
-    pub(super) fn builtin_type(ty: &Type) -> Option<&'static str> {
+    /// Returns the builtin Rust type for a TL type, if applicable.
+    /// When `use_shared_string` is true, string types map to `TdString` (a type alias
+    /// that resolves to either `String` or `gpui::SharedString` based on feature flags).
+    pub(super) fn builtin_type(ty: &Type, use_shared_string: bool) -> Option<&'static str> {
         Some(match ty.name.as_ref() {
             "Bool" => "bool",
-            "bytes" => "String",
+            "bytes" => {
+                if use_shared_string {
+                    "TdString"
+                } else {
+                    "String"
+                }
+            }
             "double" => "f64",
             "int32" => "i32",
             "int53" => "i64",
             "int64" => "i64",
-            "string" => "String",
+            "string" => {
+                if use_shared_string {
+                    "TdString"
+                } else {
+                    "String"
+                }
+            }
             "vector" => "Vec",
             "Ok" => "()",
             _ => return None,
         })
     }
 
-    fn get_base_path(ty: &Type) -> String {
-        if let Some(name) = builtin_type(ty) {
+    fn get_base_path(ty: &Type, use_shared_string: bool) -> String {
+        if let Some(name) = builtin_type(ty, use_shared_string) {
             name.to_string()
         } else {
             let mut result = String::new();
@@ -189,8 +204,8 @@ pub mod types {
         }
     }
 
-    fn get_path(ty: &Type, optional_generic_arg: bool) -> String {
-        let mut result = get_base_path(ty);
+    fn get_path(ty: &Type, optional_generic_arg: bool, use_shared_string: bool) -> String {
+        let mut result = get_base_path(ty, use_shared_string);
 
         if let Some(generic_ty) = &ty.generic_arg {
             result.push('<');
@@ -198,7 +213,7 @@ pub mod types {
                 result.push_str("Option<");
             }
 
-            result.push_str(&qual_name(generic_ty, false));
+            result.push_str(&qual_name(generic_ty, false, use_shared_string));
 
             if optional_generic_arg {
                 result.push('>');
@@ -213,22 +228,22 @@ pub mod types {
         rusty_type_name(&ty.name)
     }
 
-    pub fn qual_name(ty: &Type, optional_generic_arg: bool) -> String {
-        get_path(ty, optional_generic_arg)
+    pub fn qual_name(ty: &Type, optional_generic_arg: bool, use_shared_string: bool) -> String {
+        get_path(ty, optional_generic_arg, use_shared_string)
     }
 
     pub fn is_ok(ty: &Type) -> bool {
         ty.name == "Ok"
     }
 
-    pub(super) fn serde_as(ty: &Type) -> Option<String> {
+    pub(super) fn serde_as(ty: &Type, use_shared_string: bool) -> Option<String> {
         if ty.name == "int64" {
             return Some("DisplayFromStr".into());
         }
 
         if let Some(generic_arg) = &ty.generic_arg {
-            if let Some(serde_as) = serde_as(generic_arg) {
-                let mut result = get_base_path(ty);
+            if let Some(serde_as) = serde_as(generic_arg, use_shared_string) {
+                let mut result = get_base_path(ty, use_shared_string);
 
                 result.push('<');
                 result.push_str(&serde_as);
@@ -245,11 +260,11 @@ pub mod types {
 pub mod parameters {
     use super::*;
 
-    pub fn qual_name(param: &Parameter) -> String {
+    pub fn qual_name(param: &Parameter, use_shared_string: bool) -> String {
         // HACK: We're just matching against specific cases because there's not a
         // documented way for knowing optional generic arguments in the tl scheme
         let optional_generic_arg = param.description.contains("; messages may be null");
-        types::qual_name(&param.ty, optional_generic_arg)
+        types::qual_name(&param.ty, optional_generic_arg, use_shared_string)
     }
 
     pub fn attr_name(param: &Parameter) -> String {
@@ -267,8 +282,8 @@ pub mod parameters {
         }
     }
 
-    pub fn is_builtin_type(param: &Parameter) -> bool {
-        types::builtin_type(&param.ty).is_some() || is_optional(param)
+    pub fn is_builtin_type(param: &Parameter, use_shared_string: bool) -> bool {
+        types::builtin_type(&param.ty, use_shared_string).is_some() || is_optional(param)
     }
 
     pub fn is_optional(param: &Parameter) -> bool {
@@ -283,8 +298,8 @@ pub mod parameters {
         rusty_doc(indent, &param.description)
     }
 
-    pub fn serde_as(param: &Parameter) -> Option<String> {
-        types::serde_as(&param.ty)
+    pub fn serde_as(param: &Parameter, use_shared_string: bool) -> Option<String> {
+        types::serde_as(&param.ty, use_shared_string)
     }
 }
 
@@ -348,56 +363,63 @@ mod tests {
     #[test]
     fn check_type_qual_name() {
         let ty = "InputPeer".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "crate::enums::InputPeer");
     }
 
     #[test]
     fn check_type_qual_bare_name() {
         let ty = "ipPort".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "crate::types::IpPort");
     }
 
     #[test]
     fn check_type_bytes_qual_name() {
         let ty = "bytes".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "String");
+    }
+
+    #[test]
+    fn check_type_bytes_qual_name_shared_string() {
+        let ty = "bytes".parse().unwrap();
+        let name = types::qual_name(&ty, false, true);
+        assert_eq!(name, "TdString");
     }
 
     #[test]
     fn check_type_large_int_qual_name() {
         let ty = "int256".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "crate::types::Int256");
     }
 
     #[test]
     fn check_type_raw_vec_qual_name() {
         let ty = "vector<long>".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "Vec<crate::types::Long>");
     }
 
     #[test]
     fn check_type_opt_raw_vec_qual_name() {
         let ty = "vector<long>".parse().unwrap();
-        let name = types::qual_name(&ty, true);
+        let name = types::qual_name(&ty, true, false);
         assert_eq!(name, "Vec<Option<crate::types::Long>>");
     }
 
     #[test]
     fn check_type_vec_qual_name() {
         let ty = "Vector<Bool>".parse().unwrap();
-        let name = types::qual_name(&ty, false);
+        let name = types::qual_name(&ty, false, false);
         assert_eq!(name, "crate::enums::Vector<bool>");
     }
 
     #[test]
     fn check_type_opt_vec_qual_name() {
         let ty = "Vector<Bool>".parse().unwrap();
-        let name = types::qual_name(&ty, true);
+        let name = types::qual_name(&ty, true, false);
         assert_eq!(name, "crate::enums::Vector<Option<bool>>");
     }
 
@@ -406,7 +428,7 @@ mod tests {
     #[test]
     fn check_param_qual_name() {
         let param = "pts:int".parse().unwrap();
-        let name = parameters::qual_name(&param);
+        let name = parameters::qual_name(&param, false);
         assert_eq!(name, "crate::types::Int");
     }
 

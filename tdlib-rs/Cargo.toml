@@ -1,14 +1,14 @@
 [package]
 name = "tdlib-rs"
-version = "1.1.0"
+version = "1.2.0"
 authors = [
     "Federico Bruzzone <federico.bruzzone.i@gmail.com>",
     "Andrea Longoni",
 ]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-homepage = "https://github.com/FedericoBruzzone/tdlib-rs"
-repository = "https://github.com/FedericoBruzzone/tdlib-rs"
+homepage = "https://github.com/fifteenlabs/tdlib-rs"
+repository = "https://github.com/fifteenlabs/tdlib-rs"
 documentation = "https://docs.rs/tdlib-rs"
 keywords = ["telegram", "tdlib", "tdjson", "tdlib-rs", "telegram-api"]
 description = "Rust wrapper around the Telegram Database Library."
@@ -18,7 +18,7 @@ readme = "README.md"
 features = ["docs", "bots-only-api"]
 
 [package.metadata.system-deps]
-tdjson = "1.8.29"
+tdjson = "1.8.60"
 
 [features]
 # The default feature build the library using the local tdlib library
@@ -33,6 +33,8 @@ local-tdlib = []
 pkg-config = ["dep:system-deps"]
 # This feature is used to build the library using the tdlib library downloaded from github
 download-tdlib = ["dep:reqwest", "dep:zip"]
+# This feature enables gpui::SharedString instead of String for string types
+gpui = ["dep:gpui"]
 
 [dependencies]
 log = "0.4"
@@ -45,10 +47,11 @@ system-deps = { version = "7", optional = true }
 reqwest = { version = "0.12.4", features = ["blocking"], optional = true }
 zip = { version = "2.0.0", optional = true }
 dirs = "6.0.0"
+gpui = { version = "0.2", optional = true }
 
 [build-dependencies]
-tdlib-rs-gen = { path = "../tdlib-rs-gen", version = "1.1.0" }
-tdlib-rs-parser = { path = "../tdlib-rs-parser", version = "1.1.0" }
+tdlib-rs-gen = { path = "../tdlib-rs-gen", version = "1.2.0" }
+tdlib-rs-parser = { path = "../tdlib-rs-parser", version = "1.2.0" }
 system-deps = { version = "7", optional = true }
 reqwest = { version = "0.12.4", features = ["blocking"], optional = true }
 zip = { version = "2.0.0", optional = true }

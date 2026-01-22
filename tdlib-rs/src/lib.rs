@@ -14,6 +14,15 @@ mod tdjson;
 
 pub use generated::{enums, functions, types};
 
+/// Type alias for string types in generated code.
+/// When the `gpui` feature is enabled, this resolves to `gpui::SharedString`.
+/// Otherwise, it resolves to `String`.
+#[cfg(feature = "gpui")]
+pub type TdString = gpui::SharedString;
+
+#[cfg(not(feature = "gpui"))]
+pub type TdString = String;
+
 use enums::Update;
 use once_cell::sync::Lazy;
 use serde_json::Value;

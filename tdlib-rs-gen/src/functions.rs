@@ -12,6 +12,7 @@
 
 use crate::metadata::Metadata;
 use crate::rustifier;
+use crate::GeneratorConfig;
 use std::io::{self, Write};
 use tdlib_rs_parser::tl::{Category, Definition};
 
@@ -26,9 +27,9 @@ fn write_function<W: Write>(
     file: &mut W,
     def: &Definition,
     _metadata: &Metadata,
-    gen_bots_only_api: bool,
+    config: &GeneratorConfig,
 ) -> io::Result<()> {
-    if rustifier::definitions::is_for_bots_only(def) && !gen_bots_only_api {
+    if rustifier::definitions::is_for_bots_only(def) && !config.gen_bots_only_api {
         return Ok(());
     }
 
@@ -36,7 +37,7 @@ fn write_function<W: Write>(
     writeln!(file, "{}", rustifier::definitions::description(def, "    "))?;
     writeln!(file, "    /// # Arguments")?;
     for param in def.params.iter() {
-        if rustifier::parameters::is_for_bots_only(param) && !gen_bots_only_api {
+        if rustifier::parameters::is_for_bots_only(param) && !config.gen_bots_only_api {
             continue;
         }
 
@@ -60,7 +61,7 @@ fn write_function<W: Write>(
         rustifier::definitions::function_name(def)
     )?;
     for param in def.params.iter() {
-        if rustifier::parameters::is_for_bots_only(param) && !gen_bots_only_api {
+        if rustifier::parameters::is_for_bots_only(param) && !config.gen_bots_only_api {
             continue;
         }
 
@@ -70,7 +71,11 @@ fn write_function<W: Write>(
         if is_optional {
             write!(file, "Option<")?;
         }
-        write!(file, "{}", rustifier::parameters::qual_name(param))?;
+        write!(
+            file,
+            "{}",
+            rustifier::parameters::qual_name(param, config.use_shared_string)
+        )?;
         if is_optional {
             write!(file, ">")?;
         }
@@ -81,14 +86,14 @@ fn write_function<W: Write>(
     writeln!(
         file,
         "client_id: i32) -> Result<{}, crate::types::Error> {{",
-        rustifier::types::qual_name(&def.ty, false)
+        rustifier::types::qual_name(&def.ty, false, config.use_shared_string)
     )?;
 
     // Compose request
     writeln!(file, "        let request = json!({{")?;
     writeln!(file, "            \"@type\": \"{}\",", def.name)?;
     for param in def.params.iter() {
-        if rustifier::parameters::is_for_bots_only(param) && !gen_bots_only_api {
+        if rustifier::parameters::is_for_bots_only(param) && !config.gen_bots_only_api {
             continue;
         }
 
@@ -131,9 +136,9 @@ fn write_definition<W: Write>(
     file: &mut W,
     def: &Definition,
     metadata: &Metadata,
-    gen_bots_only_api: bool,
+    config: &GeneratorConfig,
 ) -> io::Result<()> {
-    write_function(file, def, metadata, gen_bots_only_api)?;
+    write_function(file, def, metadata, config)?;
     Ok(())
 }
 
@@ -142,20 +147,23 @@ pub(crate) fn write_functions_mod<W: Write>(
     mut file: &mut W,
     definitions: &[Definition],
     metadata: &Metadata,
-    gen_bots_only_api: bool,
+    config: &GeneratorConfig,
 ) -> io::Result<()> {
     // Begin outermost mod
     writeln!(file, "#[allow(clippy::all)]")?;
     writeln!(file, "pub mod functions {{")?;
     writeln!(file, "    use serde_json::json;")?;
     writeln!(file, "    use crate::send_request;")?;
+    if config.use_shared_string {
+        writeln!(file, "    use crate::TdString;")?;
+    }
 
     let functions = definitions
         .iter()
         .filter(|d| d.category == Category::Functions);
 
     for definition in functions {
-        write_definition(&mut file, definition, metadata, gen_bots_only_api)?;
+        write_definition(&mut file, definition, metadata, config)?;
     }
 
     // End outermost mod

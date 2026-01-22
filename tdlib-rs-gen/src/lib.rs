@@ -27,10 +27,34 @@ fn ignore_type(ty: &Type) -> bool {
     SPECIAL_CASED_TYPES.iter().any(|&x| x == ty.name)
 }
 
+/// Configuration options for code generation.
+#[derive(Default, Clone)]
+pub struct GeneratorConfig {
+    /// Generate bot-only API functions.
+    pub gen_bots_only_api: bool,
+    /// Use gpui::SharedString instead of String for string types.
+    pub use_shared_string: bool,
+}
+
 pub fn generate_rust_code(
     file: &mut impl Write,
     definitions: &[Definition],
     gen_bots_only_api: bool,
+) -> io::Result<()> {
+    generate_rust_code_with_config(
+        file,
+        definitions,
+        GeneratorConfig {
+            gen_bots_only_api,
+            use_shared_string: false,
+        },
+    )
+}
+
+pub fn generate_rust_code_with_config(
+    file: &mut impl Write,
+    definitions: &[Definition],
+    config: GeneratorConfig,
 ) -> io::Result<()> {
     write!(
         file,
@@ -48,9 +72,9 @@ pub fn generate_rust_code(
     )?;
 
     let metadata = metadata::Metadata::new(definitions);
-    types::write_types_mod(file, definitions, &metadata, gen_bots_only_api)?;
-    enums::write_enums_mod(file, definitions, &metadata, gen_bots_only_api)?;
-    functions::write_functions_mod(file, definitions, &metadata, gen_bots_only_api)?;
+    types::write_types_mod(file, definitions, &metadata, &config)?;
+    enums::write_enums_mod(file, definitions, &metadata, &config)?;
+    functions::write_functions_mod(file, definitions, &metadata, &config)?;
 
     Ok(())
 }

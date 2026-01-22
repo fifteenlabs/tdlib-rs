@@ -108,7 +108,7 @@ fn def_contains_only_bare_types<'a>(
     definition_map: &'a HashMap<&String, &&Definition>,
 ) -> bool {
     for param in check.params.iter() {
-        if !rustifier::parameters::is_builtin_type(param) && !param.ty.bare {
+        if !rustifier::parameters::is_builtin_type(param, false) && !param.ty.bare {
             return false;
         }
 

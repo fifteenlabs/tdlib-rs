@@ -13,6 +13,7 @@
 use crate::ignore_type;
 use crate::metadata::Metadata;
 use crate::rustifier;
+use crate::GeneratorConfig;
 use std::io::{self, Write};
 use tdlib_rs_parser::tl::{Category, Definition, Type};
 
@@ -27,7 +28,7 @@ fn write_enum<W: Write>(
     file: &mut W,
     ty: &Type,
     metadata: &Metadata,
-    gen_bots_only_api: bool,
+    config: &GeneratorConfig,
 ) -> io::Result<()> {
     writeln!(
         file,
@@ -36,7 +37,7 @@ fn write_enum<W: Write>(
     writeln!(file, "    #[serde(tag = \"@type\")]")?;
     writeln!(file, "    pub enum {} {{", rustifier::types::type_name(ty))?;
     for d in metadata.defs_with_type(ty) {
-        if rustifier::definitions::is_for_bots_only(d) && !gen_bots_only_api {
+        if rustifier::definitions::is_for_bots_only(d) && !config.gen_bots_only_api {
             continue;
         }
 
@@ -79,7 +80,7 @@ pub(crate) fn write_enums_mod<W: Write>(
     mut file: &mut W,
     definitions: &[Definition],
     metadata: &Metadata,
-    gen_bots_only_api: bool,
+    config: &GeneratorConfig,
 ) -> io::Result<()> {
     // Begin outermost mod
     writeln!(file, "#[allow(clippy::all)]")?;
@@ -94,7 +95,7 @@ pub(crate) fn write_enums_mod<W: Write>(
     enums.dedup();
 
     for ty in enums {
-        write_enum(&mut file, ty, metadata, gen_bots_only_api)?;
+        write_enum(&mut file, ty, metadata, config)?;
     }
 
     // End outermost mod

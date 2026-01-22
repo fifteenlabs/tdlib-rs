@@ -11,14 +11,14 @@ use std::env;
 use std::fs::File;
 use std::io::{BufWriter, Read, Write};
 use std::path::Path;
-use tdlib_rs_gen::generate_rust_code;
+use tdlib_rs_gen::{generate_rust_code_with_config, GeneratorConfig};
 use tdlib_rs_parser::parse_tl_file;
 use tdlib_rs_parser::tl::Definition;
 
 #[allow(dead_code)]
 #[cfg(not(any(feature = "docs", feature = "pkg-config")))]
 /// The version of the TDLib library.
-const TDLIB_VERSION: &str = "1.8.29";
+const TDLIB_VERSION: &str = "1.8.60";
 
 /// Load the type language definitions from a certain file.
 /// Parse errors will be printed to `stderr`, and only the
@@ -128,7 +128,7 @@ fn generic_build() {
 
 #[cfg(feature = "download-tdlib")]
 fn download_tdlib() {
-    let base_url = "https://github.com/FedericoBruzzone/tdlib-rs/releases/download";
+    let base_url = "https://github.com/fifteenlabs/tdlib-rs/releases/download";
     let url = format!(
         "{}/v{}/tdlib-{}-{}-{}.zip",
         base_url,
@@ -260,7 +260,11 @@ fn main() -> std::io::Result<()> {
 
     let mut file = BufWriter::new(File::create(Path::new(&out_dir).join("generated.rs"))?);
 
-    generate_rust_code(&mut file, &definitions, cfg!(feature = "bots-only-api"))?;
+    let config = GeneratorConfig {
+        gen_bots_only_api: cfg!(feature = "bots-only-api"),
+        use_shared_string: cfg!(feature = "gpui"),
+    };
+    generate_rust_code_with_config(&mut file, &definitions, config)?;
 
     file.flush()?;
 
