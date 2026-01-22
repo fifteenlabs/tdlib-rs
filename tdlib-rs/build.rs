@@ -187,7 +187,7 @@ fn download_tdlib() {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let outpath = Path::new(&out_dir).join(file.name());
+        let outpath = Path::new(&tdlib_dir).join(file.name());
 
         if (*file.name()).ends_with('/') {
             std::fs::create_dir_all(&outpath).unwrap();
