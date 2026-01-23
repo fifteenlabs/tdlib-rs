@@ -8,7 +8,7 @@
 #[cfg(not(any(feature = "docs", feature = "pkg-config")))]
 const TDLIB_VERSION: &str = "1.8.60";
 #[cfg(feature = "download-tdlib")]
-const TDLIB_CARGO_PKG_VERSION: &str = "1.1.0";
+const TDLIB_CARGO_PKG_VERSION: &str = "1.2.0";
 
 // WARNING: This function is not used in the current version of the library.
 // #[cfg(not(any(feature = "docs", feature = "pkg-config", feature = "download-tdlib")))]
@@ -75,8 +75,12 @@ fn download_tdlib() {
     let tdlib_dir = format!("{}/tdlib", &out_dir);
     let zip_path = format!("{}.zip", &tdlib_dir);
 
-    // Create the request
-    let response = reqwest::blocking::get(&url).unwrap();
+    // Create the request with a longer timeout for large files
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .unwrap();
+    let response = client.get(&url).send().unwrap();
 
     // Check if the response status is successful
     if response.status().is_success() {
@@ -100,7 +104,7 @@ fn download_tdlib() {
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let outpath = std::path::Path::new(&out_dir).join(file.name());
+        let outpath = std::path::Path::new(&tdlib_dir).join(file.name());
 
         if (*file.name()).ends_with('/') {
             std::fs::create_dir_all(&outpath).unwrap();
