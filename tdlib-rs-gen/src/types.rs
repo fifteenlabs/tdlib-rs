@@ -71,13 +71,17 @@ fn write_struct<W: Write>(
         if let Some(serde_as) = rustifier::parameters::serde_as(param, config.use_shared_string) {
             writeln!(file, "        #[serde_as(as = \"{serde_as}\")]")?;
         }
+
+        let is_optional = rustifier::parameters::is_optional(param);
+        if is_optional {
+            writeln!(file, "        #[serde(default)]")?;
+        }
         write!(
             file,
             "        pub {}: ",
             rustifier::parameters::attr_name(param),
         )?;
 
-        let is_optional = rustifier::parameters::is_optional(param);
         if is_optional {
             write!(file, "Option<")?;
         }
