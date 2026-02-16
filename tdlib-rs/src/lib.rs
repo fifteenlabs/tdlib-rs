@@ -23,6 +23,50 @@ pub type TdString = gpui::SharedString;
 #[cfg(not(feature = "gpui"))]
 pub type TdString = String;
 
+/// Error type for TDLib function calls.
+///
+/// Wraps both TDLib API errors and deserialization failures so that
+/// callers never see a panic from malformed responses.
+#[derive(Debug)]
+pub enum TdError {
+    /// A standard TDLib API error (e.g. 404, 429, etc.).
+    Api(types::Error),
+    /// The JSON response could not be deserialized into the expected Rust type.
+    Deserialization {
+        /// The Rust type we attempted to deserialize into (e.g. "Chat").
+        expected_type: &'static str,
+        /// The raw JSON payload that failed to deserialize.
+        payload: String,
+        /// The serde error.
+        error: serde_json::Error,
+    },
+}
+
+impl std::fmt::Display for TdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TdError::Api(e) => write!(f, "TDLib error {}: {}", e.code, e.message),
+            TdError::Deserialization {
+                expected_type,
+                error,
+                ..
+            } => write!(f, "Failed to deserialize {expected_type}: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for TdError {}
+
+impl TdError {
+    /// Returns the API error code, or -1 for deserialization errors.
+    pub fn code(&self) -> i32 {
+        match self {
+            TdError::Api(e) => e.code,
+            TdError::Deserialization { .. } => -1,
+        }
+    }
+}
+
 use enums::Update;
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -47,8 +91,9 @@ pub fn receive() -> Option<(Update, i32)> {
         let response: Value = serde_json::from_str(&response_str).unwrap();
 
         match response.get("@extra") {
-            Some(_) => {
-                OBSERVER.notify(response);
+            Some(extra) => {
+                let extra = extra.as_u64().unwrap() as u32;
+                OBSERVER.notify(extra, response_str);
             }
             None => {
                 let client_id = response["@client_id"].as_i64().unwrap() as i32;
@@ -67,7 +112,7 @@ pub fn receive() -> Option<(Update, i32)> {
     None
 }
 
-pub(crate) async fn send_request(client_id: i32, mut request: Value) -> Value {
+pub(crate) async fn send_request(client_id: i32, mut request: Value) -> String {
     let extra = EXTRA_COUNTER.fetch_add(1, Ordering::Relaxed);
     request["@extra"] = serde_json::to_value(extra).unwrap();
 

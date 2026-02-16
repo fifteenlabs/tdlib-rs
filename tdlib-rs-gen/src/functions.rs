@@ -85,7 +85,7 @@ fn write_function<W: Write>(
 
     writeln!(
         file,
-        "client_id: i32) -> Result<{}, crate::types::Error> {{",
+        "client_id: i32) -> Result<{}, crate::TdError> {{",
         rustifier::types::qual_name(&def.ty, false, config.use_shared_string)
     )?;
 
@@ -106,25 +106,31 @@ fn write_function<W: Write>(
     }
     writeln!(file, "        }});")?;
 
-    // Send request
+    // Send request and deserialize response
     writeln!(
         file,
         "        let response = send_request(client_id, request).await;"
     )?;
-    writeln!(file, "        if response[\"@type\"] == \"error\" {{")?;
-    writeln!(
-        file,
-        "            return Err(serde_json::from_value(response).unwrap())"
-    )?;
-    writeln!(file, "        }}")?;
 
+    let return_type_name = rustifier::definitions::type_name(def);
     if rustifier::types::is_ok(&def.ty) {
+        // For () return types, only check for API errors
+        writeln!(file, "        if let Ok(api_error) = serde_json::from_str::<crate::types::Error>(&response) {{")?;
+        writeln!(file, "            return Err(crate::TdError::Api(api_error));")?;
+        writeln!(file, "        }}")?;
         writeln!(file, "        Ok(())")?;
     } else {
-        writeln!(
-            file,
-            "        Ok(serde_json::from_value(response).unwrap())"
-        )?;
+        // Try to deserialize as the target type; on failure check for API error
+        writeln!(file, "        match serde_json::from_str(&response) {{")?;
+        writeln!(file, "            Ok(result) => Ok(result),")?;
+        writeln!(file, "            Err(e) => {{")?;
+        writeln!(file, "                if let Ok(api_error) = serde_json::from_str::<crate::types::Error>(&response) {{")?;
+        writeln!(file, "                    Err(crate::TdError::Api(api_error))")?;
+        writeln!(file, "                }} else {{")?;
+        writeln!(file, "                    Err(crate::TdError::Deserialization {{ expected_type: \"{return_type_name}\", payload: response, error: e }})")?;
+        writeln!(file, "                }}")?;
+        writeln!(file, "            }}")?;
+        writeln!(file, "        }}")?;
     }
 
     writeln!(file, "    }}")?;
