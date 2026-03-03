@@ -86,7 +86,12 @@ pub fn create_client() -> i32 {
 /// Note that to start receiving updates for a client you need to send
 /// at least a request with it first.
 pub fn receive() -> Option<(Update, i32)> {
-    let response = tdjson::receive(2.0);
+    receive_with_timeout(std::time::Duration::from_secs(2))
+}
+
+/// Like [`receive`], but with a caller-specified timeout for `td_receive`.
+pub fn receive_with_timeout(timeout: std::time::Duration) -> Option<(Update, i32)> {
+    let response = tdjson::receive(timeout.as_secs_f64());
     if let Some(response_str) = response {
         let response: Value = serde_json::from_str(&response_str).unwrap();
 
