@@ -116,7 +116,10 @@ fn write_function<W: Write>(
     if rustifier::types::is_ok(&def.ty) {
         // For () return types, only check for API errors
         writeln!(file, "        if let Ok(api_error) = serde_json::from_str::<crate::types::Error>(&response) {{")?;
-        writeln!(file, "            return Err(crate::TdError::Api(api_error));")?;
+        writeln!(
+            file,
+            "            return Err(crate::TdError::Api(api_error));"
+        )?;
         writeln!(file, "        }}")?;
         writeln!(file, "        Ok(())")?;
     } else {
@@ -125,7 +128,10 @@ fn write_function<W: Write>(
         writeln!(file, "            Ok(result) => Ok(result),")?;
         writeln!(file, "            Err(e) => {{")?;
         writeln!(file, "                if let Ok(api_error) = serde_json::from_str::<crate::types::Error>(&response) {{")?;
-        writeln!(file, "                    Err(crate::TdError::Api(api_error))")?;
+        writeln!(
+            file,
+            "                    Err(crate::TdError::Api(api_error))"
+        )?;
         writeln!(file, "                }} else {{")?;
         writeln!(file, "                    Err(crate::TdError::Deserialization {{ expected_type: \"{return_type_name}\", payload: response, error: e }})")?;
         writeln!(file, "                }}")?;

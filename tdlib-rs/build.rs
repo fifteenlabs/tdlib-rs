@@ -80,7 +80,7 @@ fn copy_local_tdlib() {
 /// - MacOS aarch64
 fn generic_build() {
     let out_dir = env::var("OUT_DIR").unwrap();
-    let prefix = format!("{out_dir}/tdlib");
+    let prefix = format!("{out_dir}/tdlib/{TDLIB_VERSION}");
     let include_dir = format!("{prefix}/include");
     let lib_dir = format!("{prefix}/lib");
     let lib_path = {
@@ -159,11 +159,23 @@ fn download_tdlib() {
     // );
 
     let out_dir = env::var("OUT_DIR").unwrap();
-    let tdlib_dir = format!("{}/tdlib", &out_dir);
+    let tdlib_dir = format!("{}/tdlib/{}", &out_dir, TDLIB_VERSION);
     let zip_path = format!("{}.zip", &tdlib_dir);
 
-    // Create the request
-    let response = reqwest::blocking::get(&url).unwrap();
+    // Skip download if already fully extracted at this version
+    if std::path::Path::new(&tdlib_dir).exists() {
+        return;
+    }
+
+    // Ensure parent dir exists before writing zip
+    std::fs::create_dir_all(std::path::Path::new(&tdlib_dir).parent().unwrap()).unwrap();
+
+    // Create the request with a 5 minute timeout for slow networks
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .unwrap();
+    let response = client.get(&url).send().unwrap();
 
     // Check if the response status is successful
     if response.status().is_success() {
@@ -183,11 +195,12 @@ fn download_tdlib() {
         )
     }
 
+    let tmp_dir = tempfile::TempDir::new().unwrap();
     let mut archive = zip::ZipArchive::new(File::open(&zip_path).unwrap()).unwrap();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let outpath = Path::new(&tdlib_dir).join(file.name());
+        let outpath = tmp_dir.path().join(file.name());
 
         if (*file.name()).ends_with('/') {
             std::fs::create_dir_all(&outpath).unwrap();
@@ -212,6 +225,10 @@ fn download_tdlib() {
     }
 
     let _ = std::fs::remove_file(&zip_path);
+
+    // Atomic rename into final location — TempDir auto-cleans if this panics
+    // keep() disables auto-cleanup so we can rename; TempDir cleans up if we panic before this
+    std::fs::rename(tmp_dir.keep(), &tdlib_dir).unwrap();
 }
 
 fn main() -> std::io::Result<()> {

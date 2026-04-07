@@ -72,8 +72,15 @@ fn download_tdlib() {
     );
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
-    let tdlib_dir = format!("{}/tdlib", &out_dir);
+    let tdlib_dir = format!("{}/tdlib/{}", &out_dir, TDLIB_VERSION);
     let zip_path = format!("{}.zip", &tdlib_dir);
+    // Skip download if already fully extracted at this version
+    if std::path::Path::new(&tdlib_dir).exists() {
+        return;
+    }
+
+    // Ensure parent dir exists before writing zip
+    std::fs::create_dir_all(std::path::Path::new(&tdlib_dir).parent().unwrap()).unwrap();
 
     // Create the request with a longer timeout for large files
     let client = reqwest::blocking::Client::builder()
@@ -100,11 +107,13 @@ fn download_tdlib() {
         )
     }
 
+    let tmp_dir = tempfile::TempDir::new().unwrap();
+
     let mut archive = zip::ZipArchive::new(std::fs::File::open(&zip_path).unwrap()).unwrap();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).unwrap();
-        let outpath = std::path::Path::new(&tdlib_dir).join(file.name());
+        let outpath = tmp_dir.path().join(file.name());
 
         if (*file.name()).ends_with('/') {
             std::fs::create_dir_all(&outpath).unwrap();
@@ -129,6 +138,9 @@ fn download_tdlib() {
     }
 
     let _ = std::fs::remove_file(&zip_path);
+
+    // keep() disables auto-cleanup so we can rename; TempDir cleans up if we panic before this
+    std::fs::rename(tmp_dir.keep(), &tdlib_dir).unwrap();
 }
 
 #[cfg(any(feature = "download-tdlib", feature = "local-tdlib"))]
@@ -159,7 +171,11 @@ fn generic_build(lib_path: Option<String>) {
             }
         }
         None => {
-            correct_lib_path = format!("{}/tdlib", std::env::var("OUT_DIR").unwrap());
+            correct_lib_path = format!(
+                "{}/tdlib/{}",
+                std::env::var("OUT_DIR").unwrap(),
+                TDLIB_VERSION
+            );
         }
     }
     let prefix = correct_lib_path.to_string();
