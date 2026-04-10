@@ -35,6 +35,9 @@ pkg-config = ["dep:system-deps"]
 download-tdlib = ["dep:reqwest", "dep:zip", "dep:tempfile"]
 # This feature enables gpui::SharedString instead of String for string types
 gpui = ["dep:gpui"]
+# Build-only mode: only exposes the build module, no FFI linking or runtime code.
+# Use this for [build-dependencies] to avoid linking libtdjson into the build script.
+build-only = []
 
 [dependencies]
 log = "0.4"

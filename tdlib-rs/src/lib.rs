@@ -8,25 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod build;
+#[cfg(not(feature = "build-only"))]
 mod generated;
+#[cfg(not(feature = "build-only"))]
 mod observer;
+#[cfg(not(feature = "build-only"))]
 mod tdjson;
 
+#[cfg(not(feature = "build-only"))]
 pub use generated::{enums, functions, types};
 
 /// Type alias for string types in generated code.
 /// When the `gpui` feature is enabled, this resolves to `gpui::SharedString`.
 /// Otherwise, it resolves to `String`.
-#[cfg(feature = "gpui")]
+#[cfg(all(feature = "gpui", not(feature = "build-only")))]
 pub type TdString = gpui::SharedString;
 
-#[cfg(not(feature = "gpui"))]
+#[cfg(all(not(feature = "gpui"), not(feature = "build-only")))]
 pub type TdString = String;
 
 /// Error type for TDLib function calls.
 ///
 /// Wraps both TDLib API errors and deserialization failures so that
 /// callers never see a panic from malformed responses.
+#[cfg(not(feature = "build-only"))]
 #[derive(Debug)]
 pub enum TdError {
     /// A standard TDLib API error (e.g. 404, 429, etc.).
@@ -42,6 +47,7 @@ pub enum TdError {
     },
 }
 
+#[cfg(not(feature = "build-only"))]
 impl std::fmt::Display for TdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -55,8 +61,10 @@ impl std::fmt::Display for TdError {
     }
 }
 
+#[cfg(not(feature = "build-only"))]
 impl std::error::Error for TdError {}
 
+#[cfg(not(feature = "build-only"))]
 impl TdError {
     /// Returns the API error code, or -1 for deserialization errors.
     pub fn code(&self) -> i32 {
@@ -67,16 +75,23 @@ impl TdError {
     }
 }
 
+#[cfg(not(feature = "build-only"))]
 use enums::Update;
+#[cfg(not(feature = "build-only"))]
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "build-only"))]
 use serde_json::Value;
+#[cfg(not(feature = "build-only"))]
 use std::sync::atomic::{AtomicU32, Ordering};
 
+#[cfg(not(feature = "build-only"))]
 static EXTRA_COUNTER: AtomicU32 = AtomicU32::new(0);
+#[cfg(not(feature = "build-only"))]
 static OBSERVER: Lazy<observer::Observer> = Lazy::new(observer::Observer::new);
 
 /// Create a TdLib client returning its id. Note that to start receiving
 /// updates for a client you need to send at least a request with it first.
+#[cfg(not(feature = "build-only"))]
 pub fn create_client() -> i32 {
     tdjson::create_client()
 }
@@ -85,11 +100,13 @@ pub fn create_client() -> i32 {
 /// returns a tuple with the `Update` and the associated `client_id`.
 /// Note that to start receiving updates for a client you need to send
 /// at least a request with it first.
+#[cfg(not(feature = "build-only"))]
 pub fn receive() -> Option<(Update, i32)> {
     receive_with_timeout(std::time::Duration::from_secs(2))
 }
 
 /// Like [`receive`], but with a caller-specified timeout for `td_receive`.
+#[cfg(not(feature = "build-only"))]
 pub fn receive_with_timeout(timeout: std::time::Duration) -> Option<(Update, i32)> {
     let response = tdjson::receive(timeout.as_secs_f64());
     if let Some(response_str) = response {
@@ -117,6 +134,7 @@ pub fn receive_with_timeout(timeout: std::time::Duration) -> Option<(Update, i32
     None
 }
 
+#[cfg(not(feature = "build-only"))]
 pub(crate) async fn send_request(client_id: i32, mut request: Value) -> String {
     let extra = EXTRA_COUNTER.fetch_add(1, Ordering::Relaxed);
     request["@extra"] = serde_json::to_value(extra).unwrap();
