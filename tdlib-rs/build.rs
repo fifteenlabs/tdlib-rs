@@ -251,7 +251,8 @@ fn main() -> std::io::Result<()> {
     println!("cargo:rerun-if-env-changed=LOCAL_TDLIB_PATH");
 
     // Prevent linking libraries to avoid documentation failure
-    #[cfg(not(feature = "docs"))]
+    // Also skip when build-only: we only need the generated code, not the dylib
+    #[cfg(not(any(feature = "docs", feature = "build-only")))]
     {
         // It requires the following variables to be set:
         // - export PKG_CONFIG_PATH=$HOME/lib/tdlib/lib/pkgconfig/:$PKG_CONFIG_PATH
