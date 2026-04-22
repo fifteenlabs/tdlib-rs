@@ -327,6 +327,30 @@ pub mod parameters {
         None
     }
 
+    /// Same rule family as `curated_newtype`, but applied to `vector<T>`
+    /// fields — e.g. `chat_ids: vector<int53>` → `Vec<ChatId>`. The
+    /// field name matches the pluralised `_ids` form; the gate is on
+    /// the inner TL type.
+    fn curated_vector_newtype(param: &Parameter) -> Option<&'static str> {
+        let inner = param.ty.generic_arg.as_ref()?;
+        if param.ty.name != "vector" {
+            return None;
+        }
+        let inner_ty: &str = &inner.name;
+
+        for (suffix, expected_ty, newtype) in ID_SUFFIX_RULES {
+            if inner_ty != *expected_ty {
+                continue;
+            }
+            let plural_exact = format!("{suffix}s");
+            let plural_suffix = format!("_{suffix}s");
+            if param.name == plural_exact || param.name.ends_with(&plural_suffix) {
+                return Some(newtype);
+            }
+        }
+        None
+    }
+
     /// Type path for a parameter. Resolves curated ID newtypes first (keyed
     /// on the owning definition's TL name for the struct-owned `id` override),
     /// then falls back to the default TL → Rust mapping.
@@ -337,6 +361,9 @@ pub mod parameters {
     ) -> String {
         if let Some(newtype) = curated_newtype(param, owning_def_name) {
             return newtype.to_string();
+        }
+        if let Some(inner_newtype) = curated_vector_newtype(param) {
+            return format!("Vec<{inner_newtype}>");
         }
         // HACK: We're just matching against specific cases because there's not a
         // documented way for knowing optional generic arguments in the tl scheme
