@@ -35,6 +35,10 @@ pkg-config = ["dep:system-deps"]
 download-tdlib = ["dep:reqwest", "dep:zip", "dep:tempfile"]
 # This feature enables gpui::SharedString instead of String for string types
 gpui = ["dep:gpui"]
+# This feature derives diesel ToSql / FromSql / AsExpression / FromSqlRow on
+# the strongly-typed identifier newtypes in `crate::newtypes`, targeting the
+# turbo-diesel `Turso` backend.
+diesel = ["dep:diesel", "dep:turbo-diesel", "dep:turso"]
 # Build-only mode: only exposes the build module, no FFI linking or runtime code.
 # Use this for [build-dependencies] to avoid linking libtdjson into the build script.
 build-only = []
@@ -52,6 +56,9 @@ zip = { version = "2.0.0", optional = true }
 tempfile = { version = "3", optional = true }
 dirs = "6.0.0"
 gpui = { version = "0.2", optional = true }
+diesel = { version = "2.3", optional = true, default-features = false }
+turbo-diesel = { path = "../../../appv2/crates/turbo-diesel", optional = true }
+turso = { git = "https://github.com/glommer/limbo", branch = "union-types", default-features = false, features = ["pure-rust-crypto"], optional = true }
 
 [build-dependencies]
 tdlib-rs-gen = { path = "../tdlib-rs-gen", version = "1.2.0" }

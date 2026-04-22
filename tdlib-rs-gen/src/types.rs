@@ -88,7 +88,11 @@ fn write_struct<W: Write>(
         write!(
             file,
             "{}",
-            rustifier::parameters::qual_name(param, config.use_shared_string)
+            rustifier::parameters::qual_name(
+                param,
+                config.use_shared_string,
+                Some(def.name.as_str()),
+            )
         )?;
         if is_optional {
             write!(file, ">")?;

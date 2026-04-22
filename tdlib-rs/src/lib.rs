@@ -11,6 +11,8 @@ pub mod build;
 #[cfg(not(feature = "build-only"))]
 mod generated;
 #[cfg(not(feature = "build-only"))]
+pub mod newtypes;
+#[cfg(not(feature = "build-only"))]
 mod observer;
 #[cfg(not(feature = "build-only"))]
 mod tdjson;

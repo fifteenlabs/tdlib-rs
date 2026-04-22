@@ -74,7 +74,7 @@ fn write_function<W: Write>(
         write!(
             file,
             "{}",
-            rustifier::parameters::qual_name(param, config.use_shared_string)
+            rustifier::parameters::qual_name(param, config.use_shared_string, None)
         )?;
         if is_optional {
             write!(file, ">")?;
