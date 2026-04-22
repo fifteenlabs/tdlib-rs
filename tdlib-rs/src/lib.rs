@@ -20,6 +20,12 @@ mod tdjson;
 #[cfg(not(feature = "build-only"))]
 pub use generated::{enums, functions, types};
 
+// Root-level re-export so callers write `tdlib_rs::ChatId` instead of
+// `tdlib_rs::newtypes::ChatId`. The `newtypes` module is still public
+// for callers that want `use tdlib_rs::newtypes::*;`.
+#[cfg(not(feature = "build-only"))]
+pub use newtypes::{ChatId, FileId, MessageId, SecretChatId, TopicId, UserId};
+
 /// Type alias for string types in generated code.
 /// When the `gpui` feature is enabled, this resolves to `gpui::SharedString`.
 /// Otherwise, it resolves to `String`.
