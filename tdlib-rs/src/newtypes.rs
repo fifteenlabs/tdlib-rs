@@ -186,6 +186,24 @@ int53_newtype! {
     ChatId
 }
 
+impl ChatId {
+    /// Whether this `ChatId` refers to a private 1:1 chat with a user.
+    /// Per Telegram's sign convention, user chats have positive `chat_id`
+    /// values. Doesn't allocate or consult any external data.
+    pub const fn is_user(&self) -> bool {
+        self.0 > 0
+    }
+
+    /// Whether this `ChatId` refers to a group, supergroup, or channel
+    /// (non-user chat). Per Telegram's sign convention these have a
+    /// negative `chat_id`. Non-positive includes `0`, which TDLib does not
+    /// use as a real chat id; callers that need to exclude the sentinel
+    /// should check `chat_id != ChatId::default()` separately.
+    pub const fn is_chat(&self) -> bool {
+        self.0 < 0
+    }
+}
+
 int53_newtype! {
     /// Telegram user identifier (`int53`). Shares the `int53` number space
     /// with `ChatId` for 1:1 DMs (a private chat's `ChatId` equals the
