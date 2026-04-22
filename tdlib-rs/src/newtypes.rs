@@ -202,6 +202,25 @@ impl ChatId {
     pub const fn is_chat(&self) -> bool {
         self.0 < 0
     }
+
+    /// **DO NOT CALL DIRECTLY.** The only intended caller is the
+    /// `IntoTelegramId for ChatId` impl in fifteen-db, which needs to
+    /// synthesize a `UserId` from a positive-signed `ChatId` to build
+    /// `SocialId::TelegramUser(UserId)` from the otherwise-opaque wire
+    /// value. Any other caller wants either a real `UserId` (pull it
+    /// from `Chat.type = ChatTypePrivate { user_id }`) or the
+    /// `SocialId::telegram(chat_id)` generic constructor — never this.
+    ///
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___as_user_id(&self) -> Option<UserId> {
+        if self.is_user() {
+            Some(UserId(self.0))
+        } else {
+            None
+        }
+    }
 }
 
 int53_newtype! {
