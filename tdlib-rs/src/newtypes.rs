@@ -243,6 +243,17 @@ int53_newtype! {
     TopicId
 }
 
+impl TopicId {
+    /// **DO NOT CALL DIRECTLY.** Bridge for the one place in TDLib's TL
+    /// schema where the wire type is `forum_topic_id:int32` — a narrower
+    /// encoding of the same identifier that `topic_id:int53` carries in
+    /// the messages table. Widen at the parse boundary only.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___from_forum_topic_id_int32(v: i32) -> Self {
+        Self(v as i64)
+    }
+}
+
 int32_newtype! {
     /// Telegram file identifier (`int32`). References a cached file inside
     /// TDLib's local cache; not stable across sessions.
