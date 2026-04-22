@@ -237,6 +237,18 @@ int53_newtype! {
     MessageId
 }
 
+impl MessageId {
+    /// **DO NOT CALL DIRECTLY.** fifteen-db stores per-chat watermarks as
+    /// a cross-platform `i64` cursor (Telegram uses `message_id`, Slack
+    /// uses ts-as-micros, Signal uses timestamp_ms). This bridge exists
+    /// so the Telegram indexer can feed a `MessageId` into that generic
+    /// i64 cursor column — do not use it anywhere else.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___as_i64(&self) -> i64 {
+        self.0
+    }
+}
+
 int53_newtype! {
     /// Telegram forum-topic identifier (`int53`). Within a forum chat, each
     /// topic has its own monotonic message id space.
