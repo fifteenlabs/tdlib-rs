@@ -69,7 +69,10 @@ fn copy_local_tdlib() {
     };
 }
 
-#[cfg(any(feature = "download-tdlib", feature = "local-tdlib"))]
+#[cfg(all(
+    any(feature = "download-tdlib", feature = "local-tdlib"),
+    not(feature = "build-only")
+))]
 /// Build the project using the generic build configuration.
 /// The current supported platforms are:
 /// - Linux x86_64
@@ -126,7 +129,7 @@ fn generic_build() {
     println!("cargo:rustc-link-arg=-Wl,-rpath,{lib_dir}");
 }
 
-#[cfg(feature = "download-tdlib")]
+#[cfg(all(feature = "download-tdlib", not(feature = "build-only")))]
 fn download_tdlib() {
     let base_url = "https://github.com/fifteenlabs/tdlib-rs/releases/download";
     let url = format!(
