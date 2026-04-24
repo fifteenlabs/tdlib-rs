@@ -280,7 +280,16 @@ pub mod parameters {
         ("chat_id", "int53", "crate::newtypes::ChatId"),
         ("user_id", "int53", "crate::newtypes::UserId"),
         ("message_id", "int53", "crate::newtypes::MessageId"),
+        // `message_thread_id:int53` is the message_id of the thread's root
+        // message — distinct from `TopicId` (forum topics) so callers can't
+        // mix the two namespaces. Listed *before* `topic_id` so the more
+        // specific suffix wins on `..._message_thread_id` fields.
+        ("message_thread_id", "int53", "crate::newtypes::ThreadId"),
         ("topic_id", "int53", "crate::newtypes::TopicId"),
+        // `forum_topic_id:int32` lives in the same number space as
+        // `topic_id:int53` — narrower wire encoding, same identifier.
+        // Map both to `TopicId` so the type doesn't fragment.
+        ("forum_topic_id", "int32", "crate::newtypes::TopicId"),
         ("file_id", "int32", "crate::newtypes::FileId"),
         ("secret_chat_id", "int32", "crate::newtypes::SecretChatId"),
     ];
@@ -295,6 +304,7 @@ pub mod parameters {
         ("user", "id", "int53", "crate::newtypes::UserId"),
         ("message", "id", "int53", "crate::newtypes::MessageId"),
         ("secretChat", "id", "int32", "crate::newtypes::SecretChatId"),
+        ("file", "id", "int32", "crate::newtypes::FileId"),
     ];
 
     /// If the parameter matches a curated ID rule, return the newtype path.

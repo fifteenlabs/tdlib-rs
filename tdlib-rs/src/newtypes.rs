@@ -66,6 +66,8 @@ macro_rules! int53_newtype {
             Deserialize,
         )]
         #[cfg_attr(feature = "diesel", derive(AsExpression, FromSqlRow))]
+        #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+        #[cfg_attr(feature = "schemars", schemars(transparent))]
         #[repr(transparent)]
         #[serde(transparent)]
         #[cfg_attr(feature = "diesel", diesel(sql_type = BigInt))]
@@ -74,6 +76,36 @@ macro_rules! int53_newtype {
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        impl $name {
+            /// The all-zero sentinel TDLib uses for "absent / not yet set"
+            /// (e.g. pagination cursors, missing optional ids on
+            /// create-flow paths). Equivalent to `Default::default()`, but
+            /// spells the intent at the call site: constructing a
+            /// deliberate zero rather than an unspecified default.
+            pub const fn zero() -> Self {
+                Self(0)
+            }
+
+            /// Whether this id is the all-zero sentinel — the same value
+            /// `Default::default()` returns. TDLib uses `0` to mean
+            /// "absent / not yet set" in many places (e.g. pagination
+            /// cursors, missing optional ids on create-flow paths).
+            pub const fn is_zero(&self) -> bool {
+                self.0 == 0
+            }
+
+            /// Build a `gpui::ElementId::NamedInteger` that baked this id in
+            /// as the integer component. Lets virtualized lists use the id
+            /// as a stable row identity without allocating a formatted
+            /// string per render. Bit-preserving `i64 as u64` cast is fine
+            /// for uniqueness since negative TDLib ids (e.g. supergroup
+            /// chat ids) stay disjoint from positive ones.
+            #[cfg(feature = "gpui")]
+            pub fn named_element_id(&self, name: gpui::SharedString) -> gpui::ElementId {
+                gpui::ElementId::NamedInteger(name, self.0 as u64)
             }
         }
 
@@ -131,6 +163,8 @@ macro_rules! int32_newtype {
             Deserialize,
         )]
         #[cfg_attr(feature = "diesel", derive(AsExpression, FromSqlRow))]
+        #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+        #[cfg_attr(feature = "schemars", schemars(transparent))]
         #[repr(transparent)]
         #[serde(transparent)]
         #[cfg_attr(feature = "diesel", diesel(sql_type = Integer))]
@@ -139,6 +173,32 @@ macro_rules! int32_newtype {
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
+            }
+        }
+
+        impl $name {
+            /// The all-zero sentinel TDLib uses for "absent / not yet set".
+            /// Equivalent to `Default::default()`, but spells the intent at
+            /// the call site: constructing a deliberate zero rather than an
+            /// unspecified default.
+            pub const fn zero() -> Self {
+                Self(0)
+            }
+
+            /// Whether this id is the all-zero sentinel — the same value
+            /// `Default::default()` returns. TDLib uses `0` to mean
+            /// "absent / not yet set" in many places.
+            pub const fn is_zero(&self) -> bool {
+                self.0 == 0
+            }
+
+            /// Build a `gpui::ElementId::NamedInteger` that baked this id in
+            /// as the integer component. Lets virtualized lists use the id
+            /// as a stable row identity without allocating a formatted
+            /// string per render.
+            #[cfg(feature = "gpui")]
+            pub fn named_element_id(&self, name: gpui::SharedString) -> gpui::ElementId {
+                gpui::ElementId::NamedInteger(name, self.0 as u32 as u64)
             }
         }
 
@@ -203,13 +263,19 @@ impl ChatId {
         self.0 < 0
     }
 
+    /// If this `ChatId` refers to a 1:1 DM (positive sign convention),
+    /// extract the partner's `UserId`. Returns `None` for group, channel,
+    /// or zero/sentinel chat ids. Relies on TDLib's wire-level invariant
+    /// that `chat_id == user_id` for private chats.
+    pub const fn try_into_user_id(&self) -> Option<UserId> {
+        self.DO_NOT_USE___as_user_id()
+    }
+
     /// **DO NOT CALL DIRECTLY.** The only intended caller is the
     /// `IntoTelegramId for ChatId` impl in fifteen-db, which needs to
     /// synthesize a `UserId` from a positive-signed `ChatId` to build
     /// `SocialId::TelegramUser(UserId)` from the otherwise-opaque wire
-    /// value. Any other caller wants either a real `UserId` (pull it
-    /// from `Chat.type = ChatTypePrivate { user_id }`) or the
-    /// `SocialId::telegram(chat_id)` generic constructor — never this.
+    /// value. App code should use `try_into_user_id` instead.
     ///
     /// The screamy name is intentional: it makes any stray adoption
     /// trivial to catch in grep / code review.
@@ -221,6 +287,29 @@ impl ChatId {
             None
         }
     }
+
+    /// **DO NOT CALL DIRECTLY.** Implementation hatch for serializing a
+    /// `ChatId` to an `i64`. A caller that needs this should add a
+    /// cleanly-named wrapper so the use case is named at the call site.
+    ///
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___as_i64(&self) -> i64 {
+        self.0
+    }
+
+    /// **DO NOT CALL DIRECTLY.** Implementation hatch for rehydrating a
+    /// `ChatId` from a previously-serialized `i64`. A caller that
+    /// needs this should add a cleanly-named wrapper so the use case is
+    /// named at the call site.
+    ///
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___from_i64(v: i64) -> Self {
+        Self(v)
+    }
 }
 
 int53_newtype! {
@@ -231,6 +320,25 @@ int53_newtype! {
     UserId
 }
 
+impl UserId {
+    /// Convert this `UserId` into the `ChatId` of the 1:1 DM with that
+    /// user. Infallible because every Telegram user has exactly one DM
+    /// chat addressable by the same int53 (`chat_id == user_id`).
+    pub const fn to_chat_id(&self) -> ChatId {
+        self.DO_NOT_USE___as_chat_id()
+    }
+
+    /// **DO NOT CALL DIRECTLY.** The implementation hatch behind
+    /// `to_chat_id`. App / store code should call `to_chat_id` instead;
+    /// this exists only so the wrapper has somewhere to delegate to.
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___as_chat_id(&self) -> ChatId {
+        ChatId(self.0)
+    }
+}
+
 int53_newtype! {
     /// Telegram message identifier (`int53`). Unique within a chat; not
     /// globally unique. Pair with the owning `ChatId` to address a message.
@@ -238,14 +346,27 @@ int53_newtype! {
 }
 
 impl MessageId {
-    /// **DO NOT CALL DIRECTLY.** fifteen-db stores per-chat watermarks as
-    /// a cross-platform `i64` cursor (Telegram uses `message_id`, Slack
-    /// uses ts-as-micros, Signal uses timestamp_ms). This bridge exists
-    /// so the Telegram indexer can feed a `MessageId` into that generic
-    /// i64 cursor column — do not use it anywhere else.
+    /// **DO NOT CALL DIRECTLY.** Implementation hatch for serializing a
+    /// `MessageId` to an `i64`. A caller that needs this should add a
+    /// cleanly-named wrapper so the use case is named at the call site.
+    ///
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
     #[allow(non_snake_case)]
     pub const fn DO_NOT_USE___as_i64(&self) -> i64 {
         self.0
+    }
+
+    /// **DO NOT CALL DIRECTLY.** Implementation hatch for rehydrating a
+    /// `MessageId` from a previously-serialized `i64`. A caller that
+    /// needs this should add a cleanly-named wrapper so the use case is
+    /// named at the call site.
+    ///
+    /// The screamy name is intentional: it makes any stray adoption
+    /// trivial to catch in grep / code review.
+    #[allow(non_snake_case)]
+    pub const fn DO_NOT_USE___from_i64(v: i64) -> Self {
+        Self(v)
     }
 }
 
@@ -256,14 +377,26 @@ int53_newtype! {
 }
 
 impl TopicId {
-    /// **DO NOT CALL DIRECTLY.** Bridge for the one place in TDLib's TL
-    /// schema where the wire type is `forum_topic_id:int32` — a narrower
-    /// encoding of the same identifier that `topic_id:int53` carries in
-    /// the messages table. Widen at the parse boundary only.
-    #[allow(non_snake_case)]
-    pub const fn DO_NOT_USE___from_forum_topic_id_int32(v: i32) -> Self {
-        Self(v as i64)
+    /// The General topic — the implicit root topic that exists in every
+    /// forum-mode supergroup. TDLib addresses it with the all-zero
+    /// `forum_topic_id`, which is otherwise unused as a real topic id.
+    /// Use this constructor when you need to refer to the General topic
+    /// explicitly rather than via `Default::default()`.
+    pub const fn general() -> Self {
+        Self(0)
     }
+}
+
+int53_newtype! {
+    /// Telegram message-thread identifier (`int53`).
+    ///
+    /// Distinct from `TopicId` even though both are int53 — they address
+    /// *different* topic kinds. `TopicId` identifies a forum topic in a
+    /// supergroup-with-forum-mode-on; `ThreadId` identifies a message
+    /// thread (the int53 message_id of the thread's root message — used
+    /// for channel-comment threads and basic-group reply threads).
+    /// They share the int53 namespace but are not interchangeable.
+    ThreadId
 }
 
 int32_newtype! {

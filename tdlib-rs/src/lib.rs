@@ -24,7 +24,7 @@ pub use generated::{enums, functions, types};
 // `tdlib_rs::newtypes::ChatId`. The `newtypes` module is still public
 // for callers that want `use tdlib_rs::newtypes::*;`.
 #[cfg(not(feature = "build-only"))]
-pub use newtypes::{ChatId, FileId, MessageId, SecretChatId, TopicId, UserId};
+pub use newtypes::{ChatId, FileId, MessageId, SecretChatId, ThreadId, TopicId, UserId};
 
 /// Type alias for string types in generated code.
 /// When the `gpui` feature is enabled, this resolves to `gpui::SharedString`.

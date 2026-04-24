@@ -39,6 +39,11 @@ gpui = ["dep:gpui"]
 # the strongly-typed identifier newtypes in `crate::newtypes`, targeting the
 # turbo-diesel `Turso` backend.
 diesel = ["dep:diesel", "dep:turbo-diesel", "dep:turso"]
+# This feature derives `schemars::JsonSchema` (transparent) on the strongly-
+# typed identifier newtypes in `crate::newtypes`, so callers embedding them
+# in `Action`/`JsonSchema`-derived types don't need per-field
+# `#[schemars(with = "i64")]` attribute.
+schemars = ["dep:schemars"]
 # Build-only mode: only exposes the build module, no FFI linking or runtime code.
 # Use this for [build-dependencies] to avoid linking libtdjson into the build script.
 build-only = []
@@ -57,6 +62,7 @@ tempfile = { version = "3", optional = true }
 dirs = "6.0.0"
 gpui = { version = "0.2", optional = true }
 diesel = { version = "2.3", optional = true, default-features = false }
+schemars = { version = "1.0", optional = true }
 turbo-diesel = { path = "../../../appv2/crates/turbo-diesel", optional = true }
 turso = { git = "https://github.com/tursodatabase/turso", branch = "main", default-features = false, features = ["pure-rust-crypto"], optional = true }
 
