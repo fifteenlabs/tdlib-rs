@@ -58,7 +58,7 @@ dirs = "6.0.0"
 gpui = { version = "0.2", optional = true }
 diesel = { version = "2.3", optional = true, default-features = false }
 turbo-diesel = { path = "../../../appv2/crates/turbo-diesel", optional = true }
-turso = { git = "https://github.com/glommer/limbo", branch = "union-types", default-features = false, features = ["pure-rust-crypto"], optional = true }
+turso = { git = "https://github.com/tursodatabase/turso", branch = "main", default-features = false, features = ["pure-rust-crypto"], optional = true }
 
 [build-dependencies]
 tdlib-rs-gen = { path = "../tdlib-rs-gen", version = "1.2.0" }
